@@ -7,7 +7,7 @@ public class Course {
     public boolean login;
     public String CourseName;
     public String semester;
-    public final int capacity = 3;
+    public final int capacity = 2;
     public int enrollNumber;
     public int availability;
     public List<String> studentList = new ArrayList<>();

@@ -307,16 +307,6 @@ public class DCRSImpl extends DCRSPOA {
 
     @Override
     public String swapCourse(String studentID, String newCourseID, String oldCourseID) {
-        //检查oldCourseId该学生是否enroll了该门要drop的课程(本地或者远程服务器端),在course中的studentlist里面看，同时在student的中courselist查看
-            //如果有该学生表示可以drop（不加锁）
-                //则由该门课的服务器（远程或者本地）向需要enroll的课程department发起请求(远程或者本地),查看是否可以enroll（加锁）
-                    //如果可以enroll，则enroll，返回success给oldCourse的department
-                        //收到success的department帮助学生drop该课程，然后返回成功。
-                    //不可以enroll，返回fail
-                        //收到fail的oldcourse的department则返回失败
-            //不允许该操作
-        //udp需要的方法，1.checkdrop() 2.checkWhetherEnrollAndEnroll()
-
         String result = "";
         //本地studentlist检查
         if(checkStudentAllowEnrol(studentID,newCourseID,oldCourseID) && checkLocalStudentListHaveOldCourse(studentID,oldCourseID)){
@@ -351,6 +341,28 @@ public class DCRSImpl extends DCRSPOA {
         return result;
     }
 
+//    @Override
+//    public String swapCourse(String studentID, String newCourseID, String oldCourseID) {
+//        String result = "";
+//        Student student = studentEnrollDatabase.get(studentID);
+//        String semester = findSemester(student,oldCourseID);
+//        if(checkStudentAllowEnrol(studentID,newCourseID,oldCourseID) && checkLocalStudentListHaveOldCourse(studentID,oldCourseID)){
+//            result = dropCourse(studentID, oldCourseID);
+//            if (result.contains("Successful")){
+//                result = enrolCourse(studentID,newCourseID, semester);
+//                if (result.contains("Successful")){
+//                    return "Swap Successful";
+//                } else {
+//                    enrolCourse(studentID,oldCourseID,semester);
+//                    return "Swap Fail";
+//                }
+//            } else {
+//                return "Swap Fail";
+//            }
+//        } else {
+//            return "Do Not Swap Course!";
+//        }
+//    }
 
     private boolean checkStudentAllowEnrol(String studentId,String newCourseId, String oldCourseId) {
         int localCourse = 0;
