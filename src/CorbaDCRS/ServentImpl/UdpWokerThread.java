@@ -56,6 +56,12 @@ public class UdpWokerThread implements Runnable{
                 case "checkWhetherCanEnrollAndEnroll" :
                     result = servent.checkWhetherCanEnrollAndEnroll(command[1],command[2], command[3]);
                     break;
+                case "checkEnroll" :
+                    result = servent.checkEnroll(command[1],command[2],command[3],command[4]);
+                    break;
+                case "dropOldCourse" :
+                    result = servent.dropOldCourse(command[1],command[2],command[3]);
+                    break;
                 default :
                     System.out.println("Invalid Command!");
             }

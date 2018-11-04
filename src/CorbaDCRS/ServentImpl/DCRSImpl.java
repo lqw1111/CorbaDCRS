@@ -305,41 +305,41 @@ public class DCRSImpl extends DCRSPOA {
         return translateStringArray(res);
     }
 
-    @Override
-    public String swapCourse(String studentID, String newCourseID, String oldCourseID) {
-        String result = "";
-        //本地studentlist检查
-        if(checkStudentAllowEnrol(studentID,newCourseID,oldCourseID) && checkLocalStudentListHaveOldCourse(studentID,oldCourseID)){
-            Student student = studentEnrollDatabase.get(studentID);
-            if (student != null){
-                if (checkDropAndEnroll(studentID, newCourseID, oldCourseID , findSemester(student, oldCourseID) ).contains("Successful")){
-                    //说明成功，执行对本地studentlist的修改操作;
-                    Course newCourse = new Course(newCourseID, findSemester(student, oldCourseID));
-                    List<Course> oldCourse = new ArrayList<>();
-                    List<Course> courses = studentEnrollDatabase.get(studentID).getStudentEnrollCourseList();
-                    for (Course course :
-                            courses) {
-                        if (course.getCourseName().equals(oldCourseID)) {
-                            oldCourse.add(course);
-                        }
-                    }
-
-                    if (student.getStudentEnrollCourseList().add(newCourse) && student.getStudentEnrollCourseList().removeAll(oldCourse)){
-                        return "Swap Course Successful";
-                    } else {
-                        return "Swap Fail";
-                    }
-                } else {
-                    result = "Swap Fail";
-                }
-            } else {
-                result = "Do Not Allow To Swap Course!";
-            }
-        } else {
-            result = "Do Not Allow To Swap Course!";
-        }
-        return result;
-    }
+//    @Override
+//    public String swapCourse(String studentID, String newCourseID, String oldCourseID) {
+//        String result = "";
+//        //本地studentlist检查
+//        if(checkStudentAllowEnrol(studentID,newCourseID,oldCourseID) && checkLocalStudentListHaveOldCourse(studentID,oldCourseID)){
+//            Student student = studentEnrollDatabase.get(studentID);
+//            if (student != null){
+//                if (checkDropAndEnroll(studentID, newCourseID, oldCourseID , findSemester(student, oldCourseID) ).contains("Successful")){
+//                    //说明成功，执行对本地studentlist的修改操作;
+//                    Course newCourse = new Course(newCourseID, findSemester(student, oldCourseID));
+//                    List<Course> oldCourse = new ArrayList<>();
+//                    List<Course> courses = studentEnrollDatabase.get(studentID).getStudentEnrollCourseList();
+//                    for (Course course :
+//                            courses) {
+//                        if (course.getCourseName().equals(oldCourseID)) {
+//                            oldCourse.add(course);
+//                        }
+//                    }
+//
+//                    if (student.getStudentEnrollCourseList().removeAll(oldCourse) && student.getStudentEnrollCourseList().add(newCourse)){
+//                        return "Swap Course Successful";
+//                    } else {
+//                        return "Swap Fail";
+//                    }
+//                } else {
+//                    result = "Swap Fail";
+//                }
+//            } else {
+//                result = "Do Not Allow To Swap Course!";
+//            }
+//        } else {
+//            result = "Do Not Allow To Swap Course!";
+//        }
+//        return result;
+//    }
 
 //    @Override
 //    public String swapCourse(String studentID, String newCourseID, String oldCourseID) {
@@ -363,6 +363,103 @@ public class DCRSImpl extends DCRSPOA {
 //            return "Do Not Swap Course!";
 //        }
 //    }
+
+    @Override
+    public String swapCourse(String studentID, String newCourseID, String oldCourseID) {
+        String result = "";
+        Student student = studentEnrollDatabase.get(studentID);
+        String semester = findSemester(student,oldCourseID);
+        if(checkStudentAllowEnrol(studentID,newCourseID,oldCourseID) && checkLocalStuListHaveOldCourseAndNoNewCourse(studentID,oldCourseID,newCourseID)){
+            result = checkEnroll(studentID, newCourseID, oldCourseID, semester);
+            if (result.contains("Successful")){
+                Course newCourse = new Course(newCourseID, findSemester(student, oldCourseID));
+                List<Course> oldCourse = new ArrayList<>();
+                List<Course> courses = studentEnrollDatabase.get(studentID).getStudentEnrollCourseList();
+                for (Course course : courses) {
+                    if (course.getCourseName().equals(oldCourseID)) {
+                        oldCourse.add(course);
+                    }
+
+                }
+                if (student.getStudentEnrollCourseList().removeAll(oldCourse) && student.getStudentEnrollCourseList().add(newCourse)){
+                    logger.info("Swap Course:" + oldCourseID + "->" + newCourseID + ":" + " Swap Successful");
+                    return "Swap Course Successful";
+                } else {
+                    logger.info("Swap Course:" + oldCourseID + "->" + newCourseID + ":" + " Swap Fail");
+                    return "Swap Fail";
+                }
+
+            }else {
+                logger.info("Swap Course:" + oldCourseID + "->" + newCourseID + ":" + " Swap Fail");
+                return "Swap Fail!";
+            }
+        } else {
+            logger.info("Swap Course:" + oldCourseID + "->" + newCourseID + ":" + " Do Not Allow Swap Course!");
+            return "Do Not Allow Swap Course!";
+        }
+    }
+
+    public String checkEnroll(String studentID, String newCourseID, String oldCourseID , String semester) {
+        String result = "";
+        String newCourseDepartment = newCourseID.substring(0,4);
+        if (newCourseDepartment.equals(this.department)){
+
+            Course newCourse = compCourseDatabase.get(semester).get(newCourseID);
+
+            if (newCourse != null){
+                synchronized (newCourse){
+                    if (newCourse.getCapacity() - newCourse.getEnrollNumber() > 0){
+                        String dropResult = dropOldCourse(studentID, oldCourseID, semester);
+
+                        if (dropResult.contains("Successful")){
+                            if (newCourse.getStudentList().add(studentID)){
+
+                                newCourse.setEnrollNumber(newCourse.getEnrollNumber() + 1);
+                                return "Successful";
+
+                            }else{
+                                return "Fail";
+                            }
+                        }else{
+                            return "Fail";
+                        }
+                    } else{
+                        return "Fail";
+                    }
+                }
+            } else {
+                return "Fail";
+            }
+        } else {
+            String message = "checkEnroll " + studentID + " " + newCourseID + " " + oldCourseID + " " + semester;
+            try {
+                result = sendMessage(message, getPort(newCourseDepartment));
+                return result;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return result;
+    }
+
+    public String dropOldCourse(String studentID, String oldCourseID, String semester) {
+        String result = "";
+        String oldCourseDepartment = oldCourseID.substring(0,4);
+        if (oldCourseDepartment.equals(this.department)){
+
+            result = dropLocalCourse(studentID, oldCourseID, semester);
+            return result;
+
+        } else {
+            String message = "dropOldCourse " + studentID + " " + oldCourseID + " " + semester;
+            try {
+                result = sendMessage(message, getPort(oldCourseDepartment));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return result;
+        }
+    }
 
     private boolean checkStudentAllowEnrol(String studentId,String newCourseId, String oldCourseId) {
         int localCourse = 0;
@@ -438,17 +535,21 @@ public class DCRSImpl extends DCRSPOA {
 
     }
 
-    private boolean checkLocalStudentListHaveOldCourse(String studentId, String oldCourseId ) {
-        boolean findCourse = false;
+    private boolean checkLocalStuListHaveOldCourseAndNoNewCourse(String studentId, String oldCourseId, String newCourseId ) {
+        boolean findOldCourse = false;
+        boolean findNewCourse = false;
         Student student = studentEnrollDatabase.get(studentId);
         List<Course> courses = student.getStudentEnrollCourseList();
         for (Course course :
                 courses) {
             if (course.getCourseName().equals(oldCourseId)){
-                findCourse = true;
+                findOldCourse = true;
+            }
+            if (course.getCourseName().equals(newCourseId)){
+                findNewCourse = true;
             }
         }
-        return findCourse;
+        return (findOldCourse && !findNewCourse);
     }
 
     private String findSemester(Student student, String oldCourseId){
@@ -464,13 +565,9 @@ public class DCRSImpl extends DCRSPOA {
     }
 
     public String checkDropAndEnroll(String studentId, String newCourseID, String oldCourseId ,String semester) {
-        //只对compCourseDatabase执行操作和判断，无论远程或者本地，之前studentlist的操作已经判断过了，并且会在成功的结果返回后对studentlist进行操作
         String result = "Swap Course Fail!";
-        //本地或者远程两种情况
-
         String department = oldCourseId.substring(0,4);
         if(this.department.equals(department)){
-            //检查课程单中有没有这个学生
             Course course = compCourseDatabase.get(semester).get(oldCourseId);
             List<String> studentNameList = course.getStudentList();
 
@@ -485,8 +582,6 @@ public class DCRSImpl extends DCRSPOA {
                 result = checkWhetherCanEnrollAndEnroll(studentId, newCourseID, semester);
 
                 if (result.contains("Successful")){
-                    //说明enroll成功
-                    //执行drop操作
                     if(dropLocalCourse(studentId,oldCourseId,semester).contains("Successful")){
                         result = "Swap Course Successful";
                         return result;
@@ -495,7 +590,6 @@ public class DCRSImpl extends DCRSPOA {
                     }
 
                 } else {
-                    //enroll失败
                     return "Swap Course Fail!";
                 }
 
